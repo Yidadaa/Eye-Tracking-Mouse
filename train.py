@@ -1,3 +1,4 @@
+from pytorch_lightning import callbacks
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -5,6 +6,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data import random_split
 
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pathlib import Path
 
 from model import EyeTrackerModel
@@ -19,7 +21,7 @@ class EyeTrackingMouse(pl.LightningModule):
     return self.model(x)
 
   def configure_optimizers(self):
-    return torch.optim.Adam(self.parameters(), lr=1e-3)
+    return torch.optim.Adam(self.parameters(), lr=1e-2)
 
   def build_loss(self, batch) -> torch.Tensor:
     X, y = batch
@@ -38,9 +40,11 @@ class EyeTrackingMouse(pl.LightningModule):
     return loss
 
 if __name__ == '__main__':
-  eye_dataset = EyeDataset('')
-  eye_train_loader = DataLoader(eye_dataset, batch_size=4)
-  eye_test_loader = DataLoader(eye_dataset, batch_size=4)
+  eye_dataset = EyeDataset(Path(__file__).parent / './scripts/output/meta.json')
+  test_size = int(0.2 * len(eye_dataset))
+  train_size = len(eye_dataset) - test_size
+  eye_train_loader, eye_test_loader = [DataLoader(ds, batch_size=64) for ds in random_split(eye_dataset, [train_size, test_size])]
   model = EyeTrackingMouse()
-  trainer = pl.Trainer()
+  checkpoint_callback = ModelCheckpoint(monitor='val_loss')
+  trainer = pl.Trainer(callbacks=[checkpoint_callback])
   trainer.fit(model, eye_train_loader, eye_test_loader)

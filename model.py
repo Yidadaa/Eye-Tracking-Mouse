@@ -14,7 +14,7 @@ class EyeTrackerModel(nn.Module):
     return resnet
 
   def forward(self, x:torch.Tensor) -> torch.Tensor:
-    return self.encoder(x)
+    return F.sigmoid(self.encoder(x))
 
 if __name__ == '__main__':
   w, h = 640, 480

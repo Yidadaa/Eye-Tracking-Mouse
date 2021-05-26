@@ -1,1 +1,4 @@
 output
+lightning_logs
+__pycache__
+log

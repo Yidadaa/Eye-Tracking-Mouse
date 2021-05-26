@@ -1,12 +1,18 @@
+"""[summary.
+
+Returns:
+    [type]: [description.
+"""
+
+import json
+import ctypes
+from pathlib import Path
+
 import cv2
 import pyWinhook as pyHook
-from pathlib import Path
-import ctypes
-import tkinter
 from pyWinhook.HookManager import MouseEvent
 import pythoncom
-from queue import Queue
-import json
+
 
 class Recorder(object):
   def __init__(self, output: Path, w:int = 2560, h:int = 1440) -> None:
@@ -59,6 +65,7 @@ class Recorder(object):
     return frame
 
   def run(self):
+    """Run recorded."""
     pythoncom.PumpMessages()
 
   def exit(self):

@@ -7,35 +7,49 @@ from skorch import NeuralNetRegressor
 from sklearn.model_selection import train_test_split
 
 import numpy as np
-from PIL import Image
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 import pickle, json
 
 from model import EyeTrackerModel
+from dataset import EyeDataset
 
 eye_model = EyeTrackerModel()
 
-meta_path = Path(Path(__file__).parent / './scripts/output/meta.json')
-meta = json.loads(meta_path.read_text())
-train_images = []
+meta_path = Path(Path(__file__).parent / '../scripts/output/meta.json')
+eye_ds = EyeDataset(meta_path)
+train_data = []
 train_positions = []
-for pos, img_path in tqdm(meta['record'], desc='Loading'):
-  train_images.append(np.array(Image.open(meta_path.parent / img_path).resize((160, 120))))
-  train_positions.append(list(pos))
-
-train_images: np.ndarray = np.stack(train_images)
-train_positions = np.array(train_positions, dtype=np.float32)
-train_data = train_images.transpose(0, 3, 1, 2)
-train_data = (train_data / 255).astype(np.float32)
+for i in tqdm(range(len(eye_ds)), desc='[Train] Loading'):
+  face, eyes, grid, pos = eye_ds[i]
+  train_data.append((face, eyes, grid))
+  train_positions.append(pos)
+train_positions = torch.stack(train_positions)
 
 X_train, X_test, y_train, y_test = train_test_split(train_data, train_positions)
 
-print(X_train.shape, y_train.shape)
+Xs = []
+for name, data in zip(('train', 'test'), [X_train, X_test]):
+  ds_dict = {
+    'face': [],
+    'eyes': [],
+    'grid': []
+  }
+  for face, eyes, grid in data:
+    ds_dict['face'].append(face)
+    ds_dict['eyes'].append(eyes)
+    ds_dict['grid'].append(grid)
+  for key in ds_dict:
+    ds_dict[key] = torch.stack(ds_dict[key])
+    print(f'[Train] {name} dataset {key} shape {ds_dict[key].shape}')
+  Xs.append(ds_dict)
+X_train, X_test = Xs
+
+print(f'[Train] label shape: {y_train.shape}')
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 net = NeuralNetRegressor(EyeTrackerModel, max_epochs=300, optimizer=Adam,
-    optimizer__lr=.01, device=device, batch_size=64)
+    optimizer__lr=.001, device=device, batch_size=32)
 
 net.fit(X_train, y_train)
 

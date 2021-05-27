@@ -40,7 +40,7 @@ class EyeTrackingMouse(pl.LightningModule):
     return loss
 
 if __name__ == '__main__':
-  eye_dataset = EyeDataset(Path(__file__).parent / './scripts/output/meta.json')
+  eye_dataset = EyeDataset(Path(__file__).parent / '../scripts/output/meta.json')
   test_size = int(0.2 * len(eye_dataset))
   train_size = len(eye_dataset) - test_size
   eye_train_loader, eye_test_loader = [DataLoader(ds, batch_size=64) for ds in random_split(eye_dataset, [train_size, test_size])]

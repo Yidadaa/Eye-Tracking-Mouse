@@ -27,10 +27,10 @@ class EyeDataset(Dataset):
     self.meta = json.loads(meta_path.read_text())
     ret_list = []
     for record in tqdm(self.meta['record'], desc='[Dataset] building dataset'):
-      pos, rel_img_path = record
+      pos, rel_img_path, faces = record
       img_path, face_path, eye_paths = self.get_face_and_eyes_img_path(rel_img_path)
       if face_path.exists():
-        ret_list.append([pos, img_path, face_path, eye_paths])
+        ret_list.append([pos, img_path, face_path, eye_paths, faces[0]['face_center']])
     return ret_list
 
   def __len__(self):
@@ -56,14 +56,15 @@ class EyeDataset(Dataset):
       torch.Tensor: grid tensor with (grid_size, grid_size)
       torch.Tensor: pos with (x, y)
     """
-    pos, img_path, face_path, eye_paths = self.raw_data[index]
+    assert 'cap_size' in self.meta, '[Dataset] please check if cap_size in meta json file'
+    pos, img_path, face_path, eye_paths, face_center = self.raw_data[index]
     # scale posotion to [0, 1]
     pos = list(x / s for x, s in zip(pos, self.meta['window_size']))
-    # image = self.transform_ori(Image.open(img_path))
     face_image = self.transform_to_tensor(Image.open(face_path))
     eyes_image = torch.stack([self.transform_to_tensor(Image.open(f)) for f in eye_paths])
     pos_gt = torch.Tensor(pos)
-    x, y = (pos_gt * self.grid_size).int()
+    face_center = torch.Tensor([x / y for x, y in zip(face_center, self.meta['cap_size'])])
+    x, y = (face_center * self.grid_size).int()
     grid = torch.zeros((self.grid_size, self.grid_size))
     grid[x, y] = 1
     return face_image, eyes_image, grid, pos_gt

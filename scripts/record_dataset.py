@@ -36,6 +36,7 @@ class Recorder(object):
     self.eye_size = (64, 64)
     # capture and keyboard hook
     self.cap = cv2.VideoCapture(0)
+    self.cap_size = (0, 0)
     self.hook = self.setup_hook()
     self.key_queue = []
     self.record_list = []
@@ -58,6 +59,7 @@ class Recorder(object):
         Tuple[dict, dict]: faces meta data, faces image data
     """
     h, w = frame.shape[:2]
+    self.cap_size = (w, h)
     sw, sh = w // self.scale_factor, h // self.scale_factor
     # use smaller image to detect faces
     smaller_frame = cv2.cvtColor(cv2.resize(frame, (sw, sh)), cv2.COLOR_BGR2RGB)
@@ -71,6 +73,7 @@ class Recorder(object):
       }
       face_meta = {
         'box': None,
+        'face_center': None,
         'eyes': [],
         'face_img': None
       }
@@ -80,6 +83,7 @@ class Recorder(object):
       # save face image
       face_image = cv2.resize(frame[y:y + h, x:x + w], self.face_size)
       face_meta['box'] = [x, y, w, h]
+      face_meta['face_center'] = [x + w // 2, y + h // 2]
       face_path = self.img_path / f'{frame_index}_face_{face_index}.jpg'
       face_meta['face_img'] = str(face_path.relative_to(self.output_path))
       face_data['face'] = face_image
@@ -126,7 +130,8 @@ class Recorder(object):
       'record': self.record_list,
       'window_size': self.window_size,
       'eye_size': self.eye_size,
-      'face_size': self.face_size
+      'face_size': self.face_size,
+      'cap_size': self.cap_size
     }
     with open(str(self.meta_path), 'w') as f:
       json.dump(meta, f)

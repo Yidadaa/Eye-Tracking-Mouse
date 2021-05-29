@@ -22,7 +22,7 @@ cam_w, cam_h = 640, 480
 sw, sh = 320, 240
 scale =cam_w // sw
 
-detector = MTCNN()
+detector = MTCNN(scale_factor=0.5)
 q = []
 last_pos = np.array([0, 0])
 
@@ -59,10 +59,10 @@ while True:
     face_x, face_y = x0 + w / 2, y0 + h / 2 # use face
     x, y = np.mean(list(face['keypoints'].values()) + [[face_x, face_y]], 0)
     x, y = x / sw, y / sh
-    x, y = np.clip([x - 0.2, y - 0.2], 0, 1) * 0.2 + 0.5
+    x, y = np.array([x, y])
     x, y = x * W, y * H
     q.append([x, y])
-    if len(q) > 5:
+    if len(q) > 3:
       q.pop(0)
     pos = np.mean(q, 0)
     x, y = pos

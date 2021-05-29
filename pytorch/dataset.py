@@ -23,6 +23,14 @@ class EyeDataset(Dataset):
     self.raw_data = self.build_data(meta_path)
 
   def build_data(self, meta_path: Path) -> list:
+    """Load data from meta file.
+
+    Args:
+        meta_path (Path): meta file path
+
+    Returns:
+        list: raw data list
+    """
     assert meta_path.exists(), f'[Dataset] meta file not exists: {meta_path}'
     self.meta = json.loads(meta_path.read_text())
     ret_list = []
@@ -30,7 +38,7 @@ class EyeDataset(Dataset):
       pos, rel_img_path, faces = record
       img_path, face_path, eye_paths = self.get_face_and_eyes_img_path(rel_img_path)
       if face_path.exists():
-        ret_list.append([pos, img_path, face_path, eye_paths, faces[0]['face_center']])
+        ret_list.append([pos, img_path, face_path, eye_paths, faces[0]['box']])
     return ret_list
 
   def __len__(self):
@@ -57,16 +65,17 @@ class EyeDataset(Dataset):
       torch.Tensor: pos with (x, y)
     """
     assert 'cap_size' in self.meta, '[Dataset] please check if cap_size in meta json file'
-    pos, img_path, face_path, eye_paths, face_center = self.raw_data[index]
+    pos, img_path, face_path, eye_paths, face_box = self.raw_data[index]
     # scale posotion to [0, 1]
     pos = list(x / s for x, s in zip(pos, self.meta['window_size']))
     face_image = self.transform_to_tensor(Image.open(face_path))
     eyes_image = torch.stack([self.transform_to_tensor(Image.open(f)) for f in eye_paths])
     pos_gt = torch.Tensor(pos)
-    face_center = torch.Tensor([x / y for x, y in zip(face_center, self.meta['cap_size'])])
-    x, y = (face_center * self.grid_size).int()
+    face_box = torch.Tensor([(x / z, y / z) for x, y, z in zip(face_box[:2], face_box[2:], self.meta['cap_size'])])
+    (x, w), (y, h) = (face_box * self.grid_size).int()
+    w, h = max(1, w), max(1, h) # ensure w >= 1 and h >= 1
     grid = torch.zeros((self.grid_size, self.grid_size))
-    grid[x, y] = 1
+    grid[y:y + h, x:x + w] = 1
     return face_image, eyes_image, grid, pos_gt
 
 

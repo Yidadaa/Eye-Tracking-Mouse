@@ -1,9 +1,10 @@
 from pathlib import Path
 
 import torch
+from torch._C import dtype
 from torch.optim import Adam
 
-from skorch import NeuralNetRegressor
+from skorch import NeuralNetClassifier
 from sklearn.model_selection import train_test_split
 
 import numpy as np
@@ -14,7 +15,11 @@ import pickle, json
 from model import EyeTrackerModel
 from dataset import EyeDataset
 
-eye_model = EyeTrackerModel()
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+screen_w, screen_h = 2560, 1440
+classifier_size = 5 # train a classifier
+eye_model = EyeTrackerModel(out_dim=classifier_size * classifier_size)
 
 meta_path = Path(Path(__file__).parent / '../scripts/output/meta.json')
 eye_ds = EyeDataset(meta_path)
@@ -23,11 +28,16 @@ train_positions = []
 for i in tqdm(range(len(eye_ds)), desc='[Train] Loading'):
   face, eyes, grid, pos = eye_ds[i]
   train_data.append((face, eyes, grid))
-  train_positions.append(pos)
-train_positions = torch.stack(train_positions)
+  pos = (pos * classifier_size).long()
+  flatten_pos = pos[0] + pos[1] * classifier_size
+  pos_index = int(flatten_pos)
+  label = torch.zeros((classifier_size * classifier_size, )).long()
+  label[pos_index] = 1
+  train_positions.append(torch.Tensor([pos_index]).long())
+train_positions = torch.stack(train_positions).reshape(len(train_positions))
 
 X_train, X_test, y_train, y_test = train_test_split(
-  train_data, train_positions)
+  train_data, train_positions, test_size=0.05)
 
 Xs = []
 for name, data in zip(('train', 'test'), [X_train, X_test]):
@@ -46,10 +56,9 @@ for name, data in zip(('train', 'test'), [X_train, X_test]):
   Xs.append(ds_dict)
 X_train, X_test = Xs
 
-print(f'[Train] label shape: {y_train.shape}')
+print(f'[Train] label shape: {y_train.shape} {y_train[:1]}')
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-net = NeuralNetRegressor(EyeTrackerModel, max_epochs=300, optimizer=Adam,
+net = NeuralNetClassifier(EyeTrackerModel, max_epochs=100, optimizer=Adam,
     optimizer__lr=.001, device=device, batch_size=32)
 
 net.fit(X_train, y_train)

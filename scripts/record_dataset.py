@@ -24,13 +24,14 @@ class Recorder(object):
     super().__init__()
     self.window_size = (w, h)
     self.load_ck = load_ck
+    self.record_list = []
     self.output_path = self.check_path(output)
     self.meta_path = self.output_path / 'meta.json'
     self.img_path = self.check_path(self.output_path / 'img')
     self.load_meta() # load old files or not
     # face detector
     self.detector = MTCNN()
-    self.scale_factor = 2
+    self.scale_factor = 1
     # face and eye size
     self.face_size = (200, 200)
     self.eye_size = (64, 64)
@@ -39,9 +40,9 @@ class Recorder(object):
     self.cap_size = (0, 0)
     self.hook = self.setup_hook()
     self.key_queue = []
-    self.record_list = []
 
   def load_meta(self):
+    print('[Recorder]: loading meta')
     if self.meta_path.exists() and self.load_ck:
       meta = json.loads(self.meta_path.read_text())
       self.record_list = meta['record']
@@ -107,7 +108,6 @@ class Recorder(object):
     '''Record data. '''
     frame_index = len(self.record_list)
     frame = self.capture()
-    print(frame.shape)
     faces_meta, _, __ = self.build_item(frame, frame_index)
 
     # dont save image with no faces
@@ -141,6 +141,7 @@ class Recorder(object):
     if not self.load_ck:
       for f in p.iterdir():
         if f.is_file(): f.unlink()
+      print(f'[Recorder]: old {p} removed')
     if not p.exists():
       p.mkdir()
       print(f'[Recorder]: {p} created')
@@ -189,13 +190,13 @@ class Recorder(object):
   def on_keyboard_event(self, event: pyHook.KeyboardEvent):
     print(f'[Record] key pressed: {event.Key}')
     self.key_queue.append(event.Key)
-    if len(self.key_queue) > 1:
+    if len(self.key_queue) > 4:
       self.key_queue.pop(0)
-    if ''.join(self.key_queue) == 'Escape':
+    if ''.join(self.key_queue) == 'QUIT':
       self.exit()
     return True
 
 if __name__ == '__main__':
   output = Path(__file__).parent / 'output'
-  rec = Recorder(output, load_ck=False)
+  rec = Recorder(output, load_ck=True)
   rec.run()

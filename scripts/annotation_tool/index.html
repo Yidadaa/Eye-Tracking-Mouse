@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eye Tracking Annotation Page</title>
+</head>
+
+<style>
+body {
+  margin: 0;
+}
+
+#blocks {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  height: 100vh;
+}
+
+.row {
+  display: flex;
+  justify-content: space-around;
+  flex: 1;
+}
+
+.block {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  flex: 1;
+}
+
+.block .count {
+  font-size: 40px;
+  opacity: .5;
+}
+
+#status {
+  height: 100vh;
+  width: 100vw;
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.1);
+  font-size: 100px;
+  opacity: .1;
+  z-index: -1;
+}
+</style>
+
+<body>
+  <div class="content">
+    <div id="blocks"></div>
+  </div>
+  <div id="status"></div>
+</body>
+
+<script>
+window.onload = () => {
+  const container = document.getElementById('blocks')
+  const status = document.getElementById('status')
+  const block_size = 5
+  let total = 0
+  let count = new Array(block_size).fill(0).map(v => new Array(block_size).fill(0))
+
+  function updateCount(i, j) {
+    count[i][j] += 1
+    total += 1
+    updateTotal()
+    updateStyle()
+  }
+
+  window.updateCount = updateCount
+
+  function buildBlock() {
+    const block_html = new Array(block_size).fill(0).map((_, i) => {
+    const sub_blocks = new Array(block_size).fill(0).map((_, j) => {
+      return `
+      <div class="block" id="block-${i}-${j}" onclick="window.updateCount(${i}, ${j})">
+        <div class="index">${i * block_size + j}</div>
+        <div class="count">0</div>
+      </div>
+      `
+    }).join('\n')
+      const row = `<div class="row">${sub_blocks}
+      </div>`
+      return row
+    }).join('\n')
+    container.innerHTML = block_html
+  }
+
+  function updateTotal() {
+    status.innerText = `${total}`
+  }
+
+  function updateStyle() {
+    count.forEach((v, i) => v.forEach((v, j) => {
+      document.querySelector(`#block-${i}-${j} .count`).innerText = v
+    }))
+  }
+
+  // fetch json data
+  fetch('../output/meta.json').then(res => res.json()).then(res => {
+    const [w, h] = res.window_size
+    res.record.forEach(record => {
+      let [x, y] = record[0]
+      let pos = [x / w * block_size, y / h * block_size]
+      pos = [Math.floor(pos[0]), Math.floor(pos[1])]
+      count[pos[0]][pos[1]] += 1
+      total += 1
+    })
+    buildBlock()
+    updateTotal()
+    updateStyle()
+  })
+}
+</script>
+</html>

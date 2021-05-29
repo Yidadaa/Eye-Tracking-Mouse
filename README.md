@@ -31,3 +31,30 @@ epoch    train_loss    valid_acc    valid_loss     dur
 
 Dataset:
 1197 images.
+
+Result:
+epoch    train_loss    valid_acc    valid_loss     dur
+  100        0.0001       0.4693        3.8692  2.2839
+
+### Version 1.3, Train as Classifier
+- [v]eye feature
+- [x]face feature
+- [v]grid feature
+- [x]pretrained mobilenet v3 backbones
+
+Dataset:
+1197 images.
+
+Result:
+epoch    train_loss    valid_acc    valid_loss     dur
+  100        0.0001       0.4693        3.8692  2.2839
+
+### Version 1.3, Train as Tree Classifier
+- [v] face / nose / mouth position features
+- lightgbm
+
+Dataset:
+1197 images.
+
+Result:
+acc: 0.2791666666666667

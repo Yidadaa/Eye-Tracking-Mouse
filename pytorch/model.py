@@ -32,10 +32,11 @@ class EyeTrackerModel(nn.Module):
       nn.ReLU(),
       nn.Linear(256, grid_dim)
     )
-    self.face_encoder = self.get_encoder(out_dim=face_dim)
+    # self.face_encoder = self.get_encoder(out_dim=face_dim)
     self.eye_encoder = self.get_encoder(out_dim=eye_dim)
     self.decoder = nn.Sequential(
-      nn.Linear(face_dim + eye_dim * 2 + grid_dim, 128),
+      # nn.Linear(face_dim + eye_dim * 2 + grid_dim, 128),
+      nn.Linear(eye_dim * 2 + grid_dim, 128),
       nn.ReLU(),
       nn.Linear(128, out_dim),
       nn.Softmax(1)
@@ -50,7 +51,7 @@ class EyeTrackerModel(nn.Module):
     Returns:
         nn.Module: a pretrained model
     """
-    encoder = mobilenetv3.mobilenet_v3_large(pretrained=True)
+    encoder = mobilenetv3.mobilenet_v3_large(pretrained=False)
     encoder.classifier[-1] = nn.Linear(in_features=1280, out_features=out_dim)
     return encoder
 
@@ -65,11 +66,12 @@ class EyeTrackerModel(nn.Module):
     Returns:
         torch.Tensor: predicted position (x, y), scaled to [1, 1]
     """
-    face_feature = self.face_encoder(face)
+    # face_feature = self.face_encoder(face)
     eye_feature: torch.Tensor = self.eye_encoder(eyes.view((-1, 3, self.eye_size, self.eye_size)))
     eye_feature = eye_feature.view((-1, self.eye_size * 2))
     grid_feature = self.grid_encoder(grid)
-    feature = torch.cat((face_feature, eye_feature, grid_feature), dim=1)
+    # feature = torch.cat((face_feature, eye_feature, grid_feature), dim=1)
+    feature = torch.cat((eye_feature, grid_feature), dim=1)
     y_pred = self.decoder(feature)
     return y_pred
 
